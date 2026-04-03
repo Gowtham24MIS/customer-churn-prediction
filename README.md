@@ -11,7 +11,7 @@ without knowing who is likely to leave. This model predicts
 customer churn so businesses can take action before losing them.
 
 🚀 Live Demo
-(Add your Streamlit link here after deployment)
+https://telecom-customer-churn-predictor.streamlit.app/
 
 🛠️ Tech Stack
 - Python 3.12
