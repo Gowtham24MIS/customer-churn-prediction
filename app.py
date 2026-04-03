@@ -3,6 +3,77 @@ import pickle
 import json
 import numpy as np
 import pandas as pd
+import os
+import pickle
+import json
+import pandas as pd
+import numpy as np
+import streamlit as st
+from sklearn.model_selection import train_test_split
+from imblearn.over_sampling import SMOTE
+from xgboost import XGBClassifier
+
+# =====================
+# Auto Train Model
+# =====================
+if not os.path.exists('model.pkl'):
+    
+    # Load dataset
+    url = "https://raw.githubusercontent.com/IBM/telco-customer-churn-on-icp4d/master/data/Telco-Customer-Churn.csv"
+    df = pd.read_csv(url)
+
+    # Clean
+    df = df.drop(['customerID'], axis=1)
+    df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
+    df['TotalCharges'] = pd.to_numeric(
+        df['TotalCharges'], errors='coerce'
+    )
+    df = df.fillna(df.median(numeric_only=True))
+
+    # Encode
+    cat_columns = df.select_dtypes(
+        include=['object']
+    ).columns.tolist()
+    df = pd.get_dummies(df, columns=cat_columns)
+
+    # Split
+    X = df.drop('Churn', axis=1)
+    y = df['Churn']
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=0.2, random_state=42
+    )
+
+    # SMOTE
+    smote = SMOTE(random_state=42)
+    X_train_smote, y_train_smote = smote.fit_resample(
+        X_train, y_train
+    )
+
+    # Train
+    model_train = XGBClassifier(
+        scale_pos_weight=3,
+        n_estimators=100,
+        random_state=42,
+        eval_metric='logloss'
+    )
+    model_train.fit(X_train_smote, y_train_smote)
+
+    # Save
+    with open('model.pkl', 'wb') as f:
+        pickle.dump(model_train, f)
+
+    with open('columns.json', 'w') as f:
+        json.dump(list(X.columns), f)
+
+# =====================
+# Load Model & Columns
+# =====================
+# THIS MUST BE OUTSIDE THE IF BLOCK! ✅
+with open('model.pkl', 'rb') as f:
+    model = pickle.load(f)
+
+with open('columns.json', 'r') as f:
+    model_columns = json.load(f)
 
 # =====================
 # Page Config
@@ -54,14 +125,6 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# =====================
-# Load Model & Columns
-# =====================
-with open('model.pkl', 'rb') as f:
-    model = pickle.load(f)
-
-with open('columns.json', 'r') as f:
-    model_columns = json.load(f)
 
 # =====================
 # Header
